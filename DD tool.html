@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>YouTube videos with titles starting with "Webcam Video from"</title>
+ <style>
+      body {
+        font-family: Helvetica, sans-serif;
+      }
+      #videos {
+        float: right;
+      }
+      #container {
+        width: 200px;
+        margin: 10 auto;
+      }
+      #refresh {
+        float: left;
+      }
+    </style>
+  </head>
+  <body>
+<a href="https://n4pes.net">
+        <img src="https://drive.google.com/uc?id=1t1z-JHfWVe5VTitL1imBKXV5UwcrtPk1" alt="My Logo" width="100" height="100">
+      </a>
+    </div>
+    <div id="container">
+      <h1>DigitalDiaries: Personal Expression in the Age of the Internet</h1>
+      <p>To create your own 'digital diary' experience this tool searches up to 100 million YouTube videos based on specific parameters. It looks for video titles that include "My Webcam" or "Webcam Video from" and filters out videos with over 1000 views.<p>
+<p>Please note that the content found by this tool is unreviewed and may contain offensive or inappropriate material.<p>
+      <button id="refresh">Refresh</button>
+      <div id="videos"></div>
+      
+ 
+  <script>
+    // Set the API key and search parameters
+const API_KEY = 'AIzaSyBsx28ILtg6jnjneGow_4VYXdCYJ6WXfmw';
+const SEARCH_QUERY = 'intitle:"Webcam Video from", "My Webcam"';
+const MAX_RESULTS = 10000000;
+
+// Keep track of previously shown videos
+let shownVideos = [];
+
+// Construct the API request URL with additional parameters
+const apiUrl = `https://www.googleapis.com/youtube/v3/search?key=${API_KEY}&part=snippet&type=video&q=${encodeURIComponent(SEARCH_QUERY)}&maxResults=${MAX_RESULTS}&videoSyndicated=true&videoEmbeddable=true&videoLicense=youtube&regionCode=US`;
+
+// Send the API request to search for videos and display them
+function displayVideos() {
+  shownVideos = []; // Reset shownVideos
+  fetch(apiUrl)
+    .then(response => response.json())
+    .then(data => {
+      // Extract the video IDs and channel IDs from the search results
+      const videoIds = data.items.map(item => item.id.videoId);
+      const channelIds = data.items.map(item => item.snippet.channelId);
+
+      // Construct the API request URLs to retrieve the video statistics and channel information
+      const videoStatsUrls = videoIds.map(videoId => `https://www.googleapis.com/youtube/v3/videos?key=${API_KEY}&part=statistics&id=${videoId}`);
+      const channelUrls = channelIds.map(channelId => `https://www.googleapis.com/youtube/v3/channels?key=${API_KEY}&part=snippet&id=${channelId}`);
+
+      // Send the API requests to retrieve the video statistics and channel information
+      const videoStatsRequests = videoStatsUrls.map(url => fetch(url).then(response => response.json()));
+      const channelRequests = channelUrls.map(url => fetch(url).then(response => response.json()));
+
+      Promise.all([...videoStatsRequests, ...channelRequests])
+        .then(results => {
+          const videoStats = results.slice(0, videoIds.length);
+          const channelInfo = results.slice(videoIds.length);
+
+          // Filter the videos based on the view count and check if they've been shown before
+const unshownVideoIds = videoIds.filter((videoId, index) => {
+  const stats = videoStats[index].items[0].statistics;
+  const viewCount = parseInt(stats.viewCount);
+  return viewCount <= 1000 && !shownVideos.includes(videoId);
+}).slice(0, 20); // Only show the first 20 videos
+
+
+          // Embed each unshown video on the webpage and update shownVideos
+          unshownVideoIds.forEach(videoId => {
+            const iframe = document.createElement('iframe');
+            iframe.src = `https://www.youtube.com/embed/${videoId}`;
+            iframe.width = '560';
+            iframe.height = '315';
+            document.getElementById('videos').appendChild(iframe);
+            shownVideos.push(videoId);
+          });
+        })
+        .catch(error => console.error(error));
+    })
+    .catch(error => console.error(error));
+}
+
+
+// Display the initial set of videos
+displayVideos();
+
+// Add event listener to refresh button
+document.getElementById('refresh').addEventListener('click', () => {
+  // Clear previously shown videos and display new ones
+  shownVideos = [];
+  document.getElementById('videos').innerHTML = '';
+  displayVideos();
+});
